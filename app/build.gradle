@@ -8,10 +8,11 @@ android {
 
     defaultConfig {
         applicationId "kr.ac.yeonsung.seoj.ecomate"
-        minSdk 21
+        minSdk 33
         targetSdk 34
         versionCode 1
         versionName "1.0"
+
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -39,6 +40,6 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     //DrawerLayout
     implementation "androidx.drawerlayout:drawerlayout:1.1.1"
-    implementation 'androidx.multidex:multidex:2.0.1'
+
 
 }
