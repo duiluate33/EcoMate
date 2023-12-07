@@ -1,13 +1,5 @@
 package kr.ac.yeonsung.seoj.ecomate;
 
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.FileProvider;
-import androidx.drawerlayout.widget.DrawerLayout;
-
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -25,13 +17,19 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.FileProvider;
+import androidx.drawerlayout.widget.DrawerLayout;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -42,9 +40,12 @@ public class MainActivity extends AppCompatActivity {
     Button btncamera, btngallery;
 
     String mCurrentPhotoPath;
-    static final int REQUEST_TAKE_PHOTO = 1 ;
+    static final int REQUEST_TAKE_PHOTO = 0 ;
+    static final int REQUEST_TAKE_GALLERY = 10;
 
     public static Context mContext;
+
+
 
 
 
@@ -52,6 +53,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+       /* mModule = LiteModuleLoader.load(MainActivity.assetFilePath(getApplicationContext(), "best.torchscript.ptl"));
+        BufferedReader br = new BufferedReader(new InputStreamReader(getAssets().open("aicook.txt")));*/
 
         //File sdcard = Environment.getExternalStorageDirectory();
         file = new File(Environment.getExternalStorageDirectory().getAbsolutePath());
@@ -60,6 +63,12 @@ public class MainActivity extends AppCompatActivity {
         btncamera = findViewById(R.id.btn_camera);
         btngallery = findViewById(R.id.btn_gallery);
 
+        //        권한 체크
+        boolean hasCamPerm = checkSelfPermission(android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+        boolean hasWritePerm = checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+        if (!hasCamPerm || !hasWritePerm)  // 권한 없을 시  권한설정 요청
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.CAMERA, android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+
 
         btngallery.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -67,16 +76,18 @@ public class MainActivity extends AppCompatActivity {
                 Intent intent = new Intent();
                 intent.setAction(Intent.ACTION_GET_CONTENT);
                 intent.setType("image/*");
-                startActivityForResult(intent, 10);
+                startActivityForResult(intent, REQUEST_TAKE_GALLERY);
             }
         });
+
+        Uri photoUri;
 
         btncamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Intent intent = new Intent();
                 intent.setAction(MediaStore.ACTION_IMAGE_CAPTURE);
-                startActivityForResult(intent,0);
+                startActivityForResult(intent,REQUEST_TAKE_PHOTO);
             }
         });
 
@@ -125,24 +136,66 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if(resultCode == 10) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode == REQUEST_TAKE_PHOTO && resultCode == RESULT_OK) {
             if (data != null) {
-                Uri uri = data.getData();
+                // Bundle로 데이터를 입력
+                Bundle extras = data.getExtras();
+                // Bitmap으로 컨버전
+                bitmap = (Bitmap) extras.get("data");
+
+                if(bitmap != null){
+                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                    float scale = (float) (1024/(float)bitmap.getWidth());
+                    int image_w = (int) (bitmap.getWidth() * scale);
+                    int image_h = (int) (bitmap.getHeight() * scale);
+                    Bitmap resize = Bitmap.createScaledBitmap(bitmap, image_w, image_h, true);
+                    resize.compress(Bitmap.CompressFormat.JPEG, 100, stream);
+                    byte[] byteArray = stream.toByteArray();
+
+                    Intent intent = new Intent(getApplicationContext(), ResultActivity.class);
+                    intent.putExtra("image", byteArray);
+
+                    setResult(resultCode);
+
+                    startActivity(intent);
+                }
+            }
+        }
+        else if(requestCode == REQUEST_TAKE_GALLERY && resultCode == RESULT_OK){
+            if (data != null) {
 
                 try {
-                    bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), uri);
-                    imageView.setImageBitmap(bitmap);
-                } catch (IOException e) {
+                    // 선택한 이미지에서 비트맵 생성
+                    InputStream in = getContentResolver().openInputStream(data.getData());
+                    bitmap = BitmapFactory.decodeStream(in);
+                    in.close();
+                    // 이미지뷰에 세팅
+
+                    if(bitmap != null){
+                        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                        float scale = (float) (1024/(float)bitmap.getWidth());
+                        int image_w = (int) (bitmap.getWidth() * scale);
+                        int image_h = (int) (bitmap.getHeight() * scale);
+                        Bitmap resize = Bitmap.createScaledBitmap(bitmap, image_w, image_h, true);
+                        resize.compress(Bitmap.CompressFormat.JPEG, 100, stream);
+                        byte[] byteArray = stream.toByteArray();
+
+                        Intent intent = new Intent(getApplicationContext(), ResultActivity.class);
+                        intent.putExtra("image", byteArray);
+
+                        setResult(resultCode);
+
+                        startActivity(intent);
+                    }
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
 
             }
         }
-        else if(requestCode==12){
-            bitmap = (Bitmap)data.getExtras().get("data");
-            imageView.setImageBitmap(bitmap);
-        }
-        super.onActivityResult(requestCode, resultCode, data);
+
+
     }
 
     //카메라로 촬영한 이미지를 파일로 저장해주는 함수 생성
