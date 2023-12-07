@@ -17,7 +17,7 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher_logo"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_logo_foreground"
+        android:roundIcon="@mipmap/ic_launcher_logo_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.EcoMate"
         tools:targetApi="31"
